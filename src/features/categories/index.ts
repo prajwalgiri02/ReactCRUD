@@ -2,14 +2,6 @@ import { createCrudResource } from "@/crud/createCrudResource";
 import { mockCategoryApi } from "@/crud/mock/mockApi";
 
 export const categoryResource = createCrudResource(mockCategoryApi, {
-  transformIn: (row: any) => ({
-    name: row.name,
-    status: row.status,
-  }),
-  transformOut: (data: any) => ({
-    name: data.name,
-    status: data.status,
-  }),
   getDefaultValues: () => ({
     name: "",
     status: "active",

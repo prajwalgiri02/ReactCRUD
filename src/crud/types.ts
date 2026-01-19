@@ -52,3 +52,12 @@ export interface ColumnConfig {
 export interface ValidationErrors {
   [fieldName: string]: string[] | string;
 }
+
+export interface FieldConfig {
+  name: string;
+  label: string;
+  type: "text" | "number" | "select" | "textarea" | "checkbox" | "date";
+  placeholder?: string;
+  options?: { value: string | number; label: string }[];
+  render?: (props: { value: any; onChange: (value: any) => void; error?: string }) => ReactNode;
+}

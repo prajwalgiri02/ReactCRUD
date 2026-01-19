@@ -6,3 +6,4 @@ export function createCrudResource<T>(api: CrudApi<T>, options?: Omit<CrudResour
     ...options,
   };
 }
+  
