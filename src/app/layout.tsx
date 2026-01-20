@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CRUD Frontend - Admin Dashboard",
-  description: "Next.js Admin Dashboard with CRUD Framework",
+  title: process.env.APP_NAME || "CRUD Frontend - Admin Dashboard",
+  description: process.env.APP_DESCRIPTION || "Next.js Admin Dashboard with CRUD Framework",
 };
 
 export default function RootLayout({

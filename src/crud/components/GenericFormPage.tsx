@@ -10,19 +10,45 @@ import { TextInput } from "./fields/TextInput";
 import { NumberInput } from "./fields/NumberInput";
 import { SelectInput } from "./fields/SelectInput";
 import { WysiwygInput } from "./fields/TextareaInput";
-import { ZodSchema } from "zod";
 import { toast } from "sonner";
 import { ArrowLeft, Save } from "lucide-react";
 
 interface GenericFormPageProps<T> {
   resource: CrudResource<T>;
-  schema: ZodSchema;
   fields: FieldConfig[];
   listPath: string;
   title?: { create: string; edit: string };
 }
 
-export function GenericFormPage<T>({ resource, schema, fields, listPath, title }: GenericFormPageProps<T>) {
+function normalizeValidationErrors(input: any): ValidationErrors | null {
+  // Supports:
+  // - Laravel: { message, errors: { field: ["msg"] } }
+  // - Custom: { errors: { field: "msg" } }
+  // - Custom root: { error: "..." } or { message: "..." }
+
+  const data = input?.data ?? input?.response?.data ?? input; // CrudHttpError, axios, or plain
+
+  if (data?.errors && typeof data.errors === "object") {
+    const out: ValidationErrors = {};
+    for (const [key, val] of Object.entries<any>(data.errors)) {
+      if (Array.isArray(val)) out[key] = val;
+      else if (typeof val === "string") out[key] = [val];
+      else out[key] = [String(val)];
+    }
+    return out;
+  }
+
+  if (typeof data?.error === "string") return { _error: [data.error] };
+  if (typeof data?.message === "string") return { _error: [data.message] };
+
+  return null;
+}
+
+function getStatus(err: any): number | undefined {
+  return err?.status ?? err?.response?.status;
+}
+
+export function GenericFormPage<T>({ resource, fields, listPath, title }: GenericFormPageProps<T>) {
   const params = useParams();
   const id = params?.id as string | undefined;
   const isEdit = Boolean(id);
@@ -66,21 +92,6 @@ export function GenericFormPage<T>({ resource, schema, fields, listPath, title }
       setLoading(true);
       setErrors({});
 
-      // Validate with Zod
-      const validationResult = schema.safeParse(values);
-      if (!validationResult.success) {
-        const zodErrors: ValidationErrors = {};
-        validationResult.error.errors.forEach((err) => {
-          const path = err.path.join(".");
-          zodErrors[path] = err.message;
-        });
-        setErrors(zodErrors);
-        toast.error("Validation failed", {
-          description: "Please check the form for errors",
-        });
-        return;
-      }
-
       let payload: any = { ...values };
       if (resource.transformOut) payload = resource.transformOut(payload);
       if (resource.beforeSubmit) payload = resource.beforeSubmit(payload);
@@ -88,13 +99,13 @@ export function GenericFormPage<T>({ resource, schema, fields, listPath, title }
       let savedId: CrudId | undefined;
 
       if (!isEdit) {
-        if (!resource.api.create) return;
+        if (!resource.api.create) throw new Error("api.create not implemented");
         const created = await resource.api.create(payload);
         savedId = (created as any)?.id;
         await resource.afterSubmit?.({ mode: "create", id: savedId, values: payload });
         toast.success("Item created successfully");
       } else {
-        if (!resource.api.update) return;
+        if (!resource.api.update) throw new Error("api.update not implemented");
         savedId = id as unknown as CrudId;
         await resource.api.update(savedId, payload);
         await resource.afterSubmit?.({ mode: "edit", id: savedId, values: payload });
@@ -103,9 +114,22 @@ export function GenericFormPage<T>({ resource, schema, fields, listPath, title }
 
       router.push(listPath);
     } catch (err: any) {
-      const errorData = err?.response?.data;
-      if (errorData?.errors) setErrors(errorData.errors);
-      else if (errorData?.error) setErrors({ _error: [errorData.error] });
+      const status = getStatus(err);
+
+      // Backend validation (Laravel 422)
+      if (status === 422) {
+        const ve = normalizeValidationErrors(err);
+        if (ve) setErrors(ve);
+
+        toast.error("Validation failed", {
+          description: "Please check the highlighted fields",
+        });
+        return;
+      }
+
+      // Other errors
+      const ve = normalizeValidationErrors(err);
+      if (ve) setErrors(ve);
       else setErrors({ _error: [err?.message ?? "Submit failed"] });
 
       toast.error("Failed to save", {
@@ -118,7 +142,8 @@ export function GenericFormPage<T>({ resource, schema, fields, listPath, title }
 
   const handleFieldChange = (name: string, value: any) => {
     setValues((prev) => ({ ...prev, [name]: value }));
-    // Clear field error when user types
+
+    // Clear field error when user edits
     if (errors[name]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -132,7 +157,6 @@ export function GenericFormPage<T>({ resource, schema, fields, listPath, title }
     const error = errors[field.name];
     const errorText = Array.isArray(error) ? error[0] : error;
 
-    // Custom renderer
     if (field.render) {
       return (
         <div key={field.name}>
@@ -145,7 +169,6 @@ export function GenericFormPage<T>({ resource, schema, fields, listPath, title }
       );
     }
 
-    // Built-in renderers
     switch (field.type) {
       case "text":
         return (
@@ -204,7 +227,6 @@ export function GenericFormPage<T>({ resource, schema, fields, listPath, title }
     }
   };
 
-  // Loading skeleton
   if (pageLoading) {
     return (
       <div className="max-w-xl space-y-6">
@@ -246,7 +268,9 @@ export function GenericFormPage<T>({ resource, schema, fields, listPath, title }
       </div>
 
       {rootErrorText ? (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">{String(rootErrorText)}</div>
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {String(rootErrorText)}
+        </div>
       ) : null}
 
       <Card>

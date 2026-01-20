@@ -101,7 +101,7 @@ function CrudPageInner<T>(
     fetchList();
   }, [fetchList]);
 
-  // ✅ Create/Edit now NAVIGATE to pages (no modal)
+  //  Create/Edit now NAVIGATE to pages (no modal)
   const handleCreate = useCallback(() => {
     router.push(createPath);
   }, [router, createPath]);

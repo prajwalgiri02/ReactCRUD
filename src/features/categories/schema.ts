@@ -1,12 +1,9 @@
-import { z } from "zod";
 import type { FieldConfig } from "@/crud/types";
 
-export const categorySchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  status: z.enum(["active", "inactive"], { required_error: "Status is required" }),
-});
-
-export type CategoryFormData = z.infer<typeof categorySchema>;
+export type CategoryFormData = {
+  name: string;
+  status: "active" | "inactive";
+};
 
 export const categoryFields: FieldConfig[] = [
   {

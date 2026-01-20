@@ -1,20 +1,8 @@
-import { createCrudResource } from "@/crud/createCrudResource";
-import { mockCategoryApi } from "@/crud/mock/mockApi";
+import { createRestCrudApi } from "@/crud/createCrudResource";
+import { createCrudResource } from "@/crud/types";
+import type { Category } from "@/crud/mock/mockDb";
 
-export const categoryResource = createCrudResource(mockCategoryApi, {
-  getDefaultValues: () => ({
-    name: "",
-    status: "active",
-  }),
-  extra: {
-    fetchAllForDropdown: async () => {
-      // Simulate fetching all by asking for a large page
-      const res = await mockCategoryApi.list({ page: 1, perPage: 10000 });
-      const options = res.items.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-      }));
-      return [{ id: null, name: "None" }, ...options];
-    },
-  },
-});
+const baseUrl = (process.env.API_BASE_URL || "/api") + "/categories";
+const api = createRestCrudApi<Category>(baseUrl);
+
+export const categoryResource = createCrudResource(api);
