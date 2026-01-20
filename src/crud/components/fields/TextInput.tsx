@@ -1,5 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 interface TextInputProps {
   name: string;
@@ -19,9 +20,9 @@ export function TextInput({ name, label, value, onChange, error, placeholder }: 
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={error ? "border-red-500" : ""}
+        className={cn(error && "border-destructive focus-visible:ring-destructive")}
       />
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );
 }

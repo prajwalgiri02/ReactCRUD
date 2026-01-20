@@ -1,3 +1,5 @@
+"use client";
+
 import { GenericFormPage } from "@/crud/components/GenericFormPage";
 import { categoryResource } from "./index";
 import { categorySchema, categoryFields } from "./schema";

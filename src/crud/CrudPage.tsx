@@ -1,8 +1,11 @@
+"use client";
+
 import React, { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ColumnConfig, CrudId, CrudResource, ListParams, PaginationMeta } from "./types";
 import { debounce } from "./utils/debounce";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface CrudPageProps<T> {
   title: string;
@@ -37,7 +40,7 @@ function CrudPageInner<T>(
   { title, resource, columns, getId, Table, defaultParams, extraRowActions, createPath, editPath }: CrudPageProps<T>,
   ref: React.ForwardedRef<HTMLDivElement>,
 ) {
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const [params, setParams] = useState<ListParams>({
     page: 1,
@@ -61,6 +64,9 @@ function CrudPageInner<T>(
       setMeta(response.meta ?? null);
     } catch (err) {
       console.error("Failed to fetch list:", err);
+      toast.error("Failed to fetch data", {
+        description: err instanceof Error ? err.message : "An error occurred",
+      });
     } finally {
       setLoading(false);
     }
@@ -82,12 +88,7 @@ function CrudPageInner<T>(
 
       setParams((prev) => {
         const next = { ...prev, ...nextPartialParams };
-        if (
-          "filters" in nextPartialParams ||
-          "perPage" in nextPartialParams ||
-          "sortBy" in nextPartialParams ||
-          "descending" in nextPartialParams
-        ) {
+        if ("filters" in nextPartialParams || "perPage" in nextPartialParams || "sortBy" in nextPartialParams || "descending" in nextPartialParams) {
           next.page = 1;
         }
         return next;
@@ -102,27 +103,30 @@ function CrudPageInner<T>(
 
   // ✅ Create/Edit now NAVIGATE to pages (no modal)
   const handleCreate = useCallback(() => {
-    navigate(createPath);
-  }, [navigate, createPath]);
+    router.push(createPath);
+  }, [router, createPath]);
 
   const handleEdit = useCallback(
     (row: T) => {
-      navigate(editPath(row));
+      router.push(editPath(row));
     },
-    [navigate, editPath],
+    [router, editPath],
   );
 
   const handleDelete = useCallback(
     async (row: T) => {
       const id = getId(row);
       if (!resource.api.remove) return;
-      if (!window.confirm("Are you sure you want to delete this item?")) return;
 
       try {
         await resource.api.remove(id);
+        toast.success("Item deleted successfully");
         await fetchList();
       } catch (err) {
         console.error("Failed to delete:", err);
+        toast.error("Failed to delete item", {
+          description: err instanceof Error ? err.message : "An error occurred",
+        });
       }
     },
     [getId, resource.api, fetchList],
@@ -154,8 +158,6 @@ function CrudPageInner<T>(
 }
 
 // preserves generics
-export const CrudPage = React.forwardRef(CrudPageInner) as <T>(
-  props: CrudPageProps<T> & React.RefAttributes<HTMLDivElement>,
-) => React.ReactElement;
+export const CrudPage = React.forwardRef(CrudPageInner) as <T>(props: CrudPageProps<T> & React.RefAttributes<HTMLDivElement>) => React.ReactElement;
 
 CrudPage.displayName = "CrudPage";

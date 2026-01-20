@@ -1,12 +1,17 @@
+"use client";
+
 import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { ColumnConfig, ListParams, PaginationMeta, CrudId } from "../types";
 import { cn } from "@/lib/utils";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2, MoreHorizontal, ChevronLeft, ChevronRight, Search, Plus } from "lucide-react";
 
 interface CrudTableProps<T = unknown> {
   columns: ColumnConfig[];
@@ -40,6 +45,12 @@ interface CrudTableProps<T = unknown> {
 
   /** get selected ids for bulk actions */
   onSelectionChange?: (ids: CrudId[]) => void;
+
+  /** optional bulk delete handler */
+  onBulkDelete?: (ids: CrudId[]) => Promise<void> | void;
+
+  /** render bulk actions when there is selection */
+  bulkActions?: (ctx: { selectedCount: number; clear: () => void; selectedIds: CrudId[] }) => React.ReactNode;
 }
 
 export const CrudTable = React.forwardRef(
@@ -61,9 +72,15 @@ export const CrudTable = React.forwardRef(
       getRowId,
       enableSelection = true,
       onSelectionChange,
+      onBulkDelete,
+      bulkActions,
     }: CrudTableProps<T>,
     ref: React.ForwardedRef<HTMLDivElement>,
   ) => {
+    const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+    const [rowToDelete, setRowToDelete] = React.useState<T | null>(null);
+    const [isDeleting, setIsDeleting] = React.useState(false);
+
     const handleSearch = (value: string) => onParamsChange({ search: value, page: 1 });
     const handlePerPageChange = (value: string) => onParamsChange({ perPage: Number.parseInt(value, 10), page: 1 });
 
@@ -72,8 +89,7 @@ export const CrudTable = React.forwardRef(
       else onParamsChange({ sortBy: key, descending: false, page: 1 });
     };
 
-    const rangeText =
-      meta && meta.from != null && meta.to != null ? `${meta.from}–${meta.to} of ${meta.total}` : meta ? `Total ${meta.total}` : "";
+    const rangeText = meta && meta.from != null && meta.to != null ? `${meta.from}–${meta.to} of ${meta.total}` : meta ? `Total ${meta.total}` : "";
 
     // -------------------------
     // Selection
@@ -116,6 +132,35 @@ export const CrudTable = React.forwardRef(
       });
     };
 
+    // Bulk selection state helpers
+    const selectedIdList = React.useMemo<CrudId[]>(() => {
+      return Array.from(selectedIds).map((x) => (Number.isFinite(Number(x)) ? (Number(x) as any) : (x as any)));
+    }, [selectedIds]);
+
+    const selectedCount = selectedIds.size;
+
+    const clearSelection = () => setSelectedIds(new Set());
+
+    // -------------------------
+    // Delete Dialog
+    // -------------------------
+    const handleDeleteClick = (row: T) => {
+      setRowToDelete(row);
+      setDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = async () => {
+      if (!rowToDelete) return;
+      setIsDeleting(true);
+      try {
+        await onDelete(rowToDelete);
+      } finally {
+        setIsDeleting(false);
+        setDeleteDialogOpen(false);
+        setRowToDelete(null);
+      }
+    };
+
     // -------------------------
     // Pagination (numbered + dots)
     // -------------------------
@@ -149,83 +194,102 @@ export const CrudTable = React.forwardRef(
     }, [meta?.current_page, meta?.last_page]);
 
     // -------------------------
-    // UI helpers
+    // Skeleton Rows
     // -------------------------
-    const IconAction = ({
-      title,
-      onClick,
-      danger,
-      children,
-    }: {
-      title: string;
-      onClick?: () => void;
-      danger?: boolean;
-      children: React.ReactNode;
-    }) => (
-      <button
-        type="button"
-        title={title}
-        aria-label={title}
-        onClick={onClick}
-        className={cn(
-          "h-10 w-10 rounded-2xl grid place-items-center transition-colors",
-          "hover:bg-muted",
-          danger ? "text-red-600 hover:text-red-700" : "text-primary",
+    const SkeletonRow = () => (
+      <TableRow>
+        {enableSelection && (
+          <TableCell className="w-[48px]">
+            <Skeleton className="h-4 w-4" />
+          </TableCell>
         )}
-      >
-        {children}
-      </button>
+        {columns.map((col) => (
+          <TableCell key={col.key}>
+            <Skeleton className="h-4 w-full max-w-[200px]" />
+          </TableCell>
+        ))}
+        <TableCell className="text-right">
+          <Skeleton className="h-8 w-8 ml-auto" />
+        </TableCell>
+      </TableRow>
     );
 
     return (
       <div ref={ref} className="space-y-4">
         {/* Toolbar */}
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="relative w-[280px] max-w-[52vw]">
-              <Input
-                placeholder="Search..."
-                value={params.search || ""}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="h-11 rounded-2xl pl-10"
-              />
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="opacity-70">
-                  <path
-                    d="M21 21l-4.3-4.3m1.3-5.2a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </span>
+          {enableSelection && selectedCount > 0 ? (
+            <div className="flex items-center justify-between w-full gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-sm font-medium text-foreground">{selectedCount} selected</span>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSelection}
+                  className="h-9 rounded-xl text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {onBulkDelete ? (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="h-9 rounded-xl gap-2"
+                    onClick={() => onBulkDelete(selectedIdList)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
+                ) : null}
+
+                {bulkActions ? bulkActions({ selectedCount, clear: clearSelection, selectedIds: selectedIdList }) : null}
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="relative w-[280px] max-w-[52vw]">
+                  <Input
+                    placeholder="Search..."
+                    value={params.search || ""}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    className="h-11 rounded-xl pl-10"
+                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
 
-          <div className="flex items-center gap-2">
-            {toolbarActions}
+              <div className="flex items-center gap-2">
+                {toolbarActions}
 
-            {onCreate ? (
-              <Button onClick={onCreate} className="h-10 rounded-2xl px-4">
-                Create
-              </Button>
-            ) : null}
-          </div>
+                {onCreate ? (
+                  <Button onClick={onCreate} className="h-10 rounded-xl px-4 gap-2">
+                    <Plus className="h-4 w-4" />
+                    Create
+                  </Button>
+                ) : null}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Table */}
-        <div className="rounded-2xl border bg-card overflow-hidden">
+        <div className="rounded-xl border bg-card overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/50">
                 {enableSelection && (
                   <TableHead className="w-[48px]">
                     <div className="flex items-center">
                       <Checkbox
-                        checked={allSelected}
-                        {...(someSelected ? { checked: "indeterminate" as any } : {})}
+                        checked={someSelected ? "indeterminate" : allSelected}
                         onCheckedChange={toggleAll}
                         aria-label="Select all"
+                        className="h-4 w-4 rounded-[6px] border-muted-foreground/25 bg-transparent data-[state=checked]:bg-primary/90 data-[state=checked]:border-primary/30"
                       />
                     </div>
                   </TableHead>
@@ -236,7 +300,7 @@ export const CrudTable = React.forwardRef(
                     <button
                       type="button"
                       onClick={() => handleSort(col.key)}
-                      className="inline-flex items-center gap-2 hover:text-foreground/80"
+                      className="inline-flex items-center gap-2 hover:text-foreground/80 font-medium"
                       title="Sort"
                     >
                       {col.title}
@@ -245,17 +309,14 @@ export const CrudTable = React.forwardRef(
                   </TableHead>
                 ))}
 
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead className="text-right w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
 
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={columns.length + (enableSelection ? 2 : 1)} className="text-center py-10 text-muted-foreground">
-                    Loading...
-                  </TableCell>
-                </TableRow>
+                // Skeleton loading rows
+                Array.from({ length: params.perPage || 5 }).map((_, idx) => <SkeletonRow key={idx} />)
               ) : rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={columns.length + (enableSelection ? 2 : 1)} className="text-center py-10 text-muted-foreground">
@@ -268,10 +329,15 @@ export const CrudTable = React.forwardRef(
                   const idStr = String(rowIds[idx]);
 
                   return (
-                    <TableRow key={rowKey}>
+                    <TableRow key={rowKey} className="hover:bg-muted/50 transition-colors">
                       {enableSelection && (
                         <TableCell className="w-[48px]">
-                          <Checkbox checked={selectedIds.has(idStr)} onCheckedChange={() => toggleOne(idStr)} aria-label="Select row" />
+                          <Checkbox
+                            checked={selectedIds.has(idStr)}
+                            onCheckedChange={() => toggleOne(idStr)}
+                            aria-label="Select row"
+                            className="h-4 w-4 rounded-[6px] border-muted-foreground/25 bg-transparent data-[state=checked]:bg-primary/90 data-[state=checked]:border-primary/30"
+                          />
                         </TableCell>
                       )}
 
@@ -280,29 +346,41 @@ export const CrudTable = React.forwardRef(
                       ))}
 
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {rowActions ? (
-                            rowActions(row)
-                          ) : (
-                            <>
-                              {onView ? (
-                                <IconAction title="View" onClick={() => onView(row)}>
+                        {rowActions ? (
+                          rowActions(row)
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[160px]">
+                              {onView && (
+                                <DropdownMenuItem onClick={() => onView(row)} className="gap-2">
                                   <Eye className="h-4 w-4" />
-                                </IconAction>
-                              ) : null}
-
-                              <IconAction title="Edit" onClick={() => onEdit(row)}>
+                                  View
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onClick={() => onEdit(row)} className="gap-2">
                                 <Pencil className="h-4 w-4" />
-                              </IconAction>
-
-                              <IconAction title="Delete" onClick={() => onDelete(row)} danger>
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleDeleteClick(row)} className="gap-2 text-destructive focus:text-destructive">
                                 <Trash2 className="h-4 w-4" />
-                              </IconAction>
-
-                              {extraRowActions ? extraRowActions(row) : null}
-                            </>
-                          )}
-                        </div>
+                                Delete
+                              </DropdownMenuItem>
+                              {extraRowActions && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  {extraRowActions(row)}
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -314,14 +392,14 @@ export const CrudTable = React.forwardRef(
 
         {/* Pagination footer */}
         {meta && (
-          <div className="flex items-center justify-between px-4 py-2 border-t text-sm text-muted-foreground bg-white">
+          <div className="flex items-center justify-between px-2 py-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <span>Rows per page:</span>
               <Select value={String(params.perPage)} onValueChange={handlePerPageChange}>
-                <SelectTrigger className="h-8 w-[70px] rounded-md">
+                <SelectTrigger className="h-8 w-[70px] rounded-lg">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
+                <SelectContent>
                   <SelectItem value="5">5</SelectItem>
                   <SelectItem value="10">10</SelectItem>
                   <SelectItem value="12">12</SelectItem>
@@ -334,20 +412,20 @@ export const CrudTable = React.forwardRef(
             <div className="flex items-center gap-4">
               <span>{rangeText}</span>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => goToPage(meta.current_page - 1)}
                   disabled={meta.current_page === 1}
-                  className="h-9 w-9 rounded-xl"
+                  className="h-8 w-8 rounded-lg"
                   aria-label="Previous page"
                   title="Previous page"
                 >
-                  ‹
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
 
-                <div className="flex items-center gap-1 rounded-2xl bg-muted/50 p-1">
+                <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1">
                   {pageItems.map((it, idx) =>
                     it === "dots" ? (
                       <span key={`dots-${idx}`} className="px-2 text-muted-foreground">
@@ -359,7 +437,7 @@ export const CrudTable = React.forwardRef(
                         type="button"
                         onClick={() => goToPage(it)}
                         className={cn(
-                          "h-9 min-w-9 px-3 rounded-xl text-sm transition-colors",
+                          "h-8 min-w-8 px-3 rounded-lg text-sm transition-colors",
                           it === meta.current_page ? "bg-primary text-primary-foreground" : "hover:bg-muted text-foreground/80",
                         )}
                         aria-current={it === meta.current_page ? "page" : undefined}
@@ -376,16 +454,34 @@ export const CrudTable = React.forwardRef(
                   size="icon"
                   onClick={() => goToPage(meta.current_page + 1)}
                   disabled={meta.current_page === meta.last_page}
-                  className="h-9 w-9 rounded-xl"
+                  className="h-8 w-8 rounded-lg"
                   aria-label="Next page"
                   title="Next page"
                 >
-                  ›
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Delete</DialogTitle>
+              <DialogDescription>Are you sure you want to delete this item? This action cannot be undone.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleConfirmDelete} disabled={isDeleting}>
+                {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   },

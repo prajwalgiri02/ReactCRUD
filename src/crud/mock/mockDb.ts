@@ -1,8 +1,8 @@
 export interface Category {
-  id: number
-  name: string
-  status: "active" | "inactive"
-  created_at: string
+  id: number;
+  name: string;
+  status: "active" | "inactive";
+  created_at: string;
 }
 
 const generateCategories = (): Category[] => {
@@ -47,16 +47,16 @@ const generateCategories = (): Category[] => {
     "Kids Clothing",
     "Kids Shoes",
     "Infant Gear",
-  ]
+  ];
 
   return names.map((name, idx) => ({
     id: idx + 1,
     name,
     status: idx % 3 === 0 ? "inactive" : "active",
     created_at: new Date(2024, Math.random() * 12, Math.floor(Math.random() * 28) + 1).toISOString(),
-  }))
-}
+  }));
+};
 
 export const mockDb = {
   categories: generateCategories(),
-}
+};

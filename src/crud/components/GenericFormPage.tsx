@@ -1,12 +1,18 @@
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { ValidationErrors, CrudId, CrudResource, FieldConfig } from "../types";
 import { TextInput } from "./fields/TextInput";
 import { NumberInput } from "./fields/NumberInput";
 import { SelectInput } from "./fields/SelectInput";
 import { TextareaInput } from "./fields/TextareaInput";
 import { ZodSchema } from "zod";
+import { toast } from "sonner";
+import { ArrowLeft, Save } from "lucide-react";
 
 interface GenericFormPageProps<T> {
   resource: CrudResource<T>;
@@ -17,9 +23,10 @@ interface GenericFormPageProps<T> {
 }
 
 export function GenericFormPage<T>({ resource, schema, fields, listPath, title }: GenericFormPageProps<T>) {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params?.id as string | undefined;
   const isEdit = Boolean(id);
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const [values, setValues] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
@@ -45,6 +52,9 @@ export function GenericFormPage<T>({ resource, schema, fields, listPath, title }
         setValues(formValues ?? {});
       } catch (e: any) {
         setErrors({ _error: [e?.message ?? "Failed to load item"] });
+        toast.error("Failed to load item", {
+          description: e?.message ?? "An error occurred",
+        });
       } finally {
         setPageLoading(false);
       }
@@ -65,6 +75,9 @@ export function GenericFormPage<T>({ resource, schema, fields, listPath, title }
           zodErrors[path] = err.message;
         });
         setErrors(zodErrors);
+        toast.error("Validation failed", {
+          description: "Please check the form for errors",
+        });
         return;
       }
 
@@ -79,19 +92,25 @@ export function GenericFormPage<T>({ resource, schema, fields, listPath, title }
         const created = await resource.api.create(payload);
         savedId = (created as any)?.id;
         await resource.afterSubmit?.({ mode: "create", id: savedId, values: payload });
+        toast.success("Item created successfully");
       } else {
         if (!resource.api.update) return;
         savedId = id as unknown as CrudId;
         await resource.api.update(savedId, payload);
         await resource.afterSubmit?.({ mode: "edit", id: savedId, values: payload });
+        toast.success("Item updated successfully");
       }
 
-      navigate(listPath);
+      router.push(listPath);
     } catch (err: any) {
       const errorData = err?.response?.data;
       if (errorData?.errors) setErrors(errorData.errors);
       else if (errorData?.error) setErrors({ _error: [errorData.error] });
       else setErrors({ _error: [err?.message ?? "Submit failed"] });
+
+      toast.error("Failed to save", {
+        description: err?.message ?? "An error occurred",
+      });
     } finally {
       setLoading(false);
     }
@@ -99,6 +118,14 @@ export function GenericFormPage<T>({ resource, schema, fields, listPath, title }
 
   const handleFieldChange = (name: string, value: any) => {
     setValues((prev) => ({ ...prev, [name]: value }));
+    // Clear field error when user types
+    if (errors[name]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   const renderField = (field: FieldConfig) => {
@@ -177,33 +204,69 @@ export function GenericFormPage<T>({ resource, schema, fields, listPath, title }
     }
   };
 
-  if (pageLoading) return <div className="p-6 text-muted-foreground">Loading...</div>;
+  // Loading skeleton
+  if (pageLoading) {
+    return (
+      <div className="max-w-xl space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10" />
+          <Skeleton className="h-8 w-48" />
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {fields.map((_, idx) => (
+              <div key={idx} className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+            <div className="flex justify-end gap-2 pt-4">
+              <Skeleton className="h-10 w-20" />
+              <Skeleton className="h-10 w-20" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const rootError = (errors as any)?._error;
   const rootErrorText = Array.isArray(rootError) ? rootError[0] : rootError;
 
   return (
     <div className="max-w-xl space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{pageTitle}</h1>
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => router.push(listPath)} className="h-10 w-10 rounded-xl">
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <h1 className="text-2xl font-semibold">{pageTitle}</h1>
       </div>
 
       {rootErrorText ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{String(rootErrorText)}</div>
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">{String(rootErrorText)}</div>
       ) : null}
 
-      <div className="space-y-4 rounded-2xl border bg-card p-6">
-        {fields.map((field) => renderField(field))}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {fields.map((field) => renderField(field))}
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => navigate(listPath)} disabled={loading}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? "Saving..." : "Save"}
-          </Button>
-        </div>
-      </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => router.push(listPath)} disabled={loading}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={loading} className="gap-2">
+              <Save className="h-4 w-4" />
+              {loading ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
