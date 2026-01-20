@@ -22,10 +22,6 @@ type Item = {
 
 const sections: Array<{ title: string; items: Item[] }> = [
   {
-    title: "CRUD",
-    items: [{ to: "/categories", label: "Categories", icon: FolderTree }],
-  },
-  {
     title: "Dashboard",
     items: [
       { to: "/dashboard/default", label: "Default", icon: LayoutDashboard },

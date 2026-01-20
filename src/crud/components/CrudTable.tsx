@@ -91,6 +91,12 @@ export const CrudTable = React.forwardRef(
     };
 
     const rangeText = meta && meta.from != null && meta.to != null ? `${meta.from}–${meta.to} of ${meta.total}` : meta ? `Total ${meta.total}` : "";
+    const MAX_LEN = 120;
+
+    function truncate(text: string, max = MAX_LEN) {
+      if (!text) return "";
+      return text.length > max ? text.slice(0, max) + "…" : text;
+    }
 
     // -------------------------
     // Selection
@@ -332,22 +338,30 @@ export const CrudTable = React.forwardRef(
                         </TableCell>
                       )}
 
-                      {columns.map((col) => (
-                        <TableCell key={String(col.key)}>
-                          {col.render ? (
-                            col.render(row)
-                          ) : col.html && typeof (row as any)[col.key] === "string" ? (
-                            <div
-                              className="prose prose-sm max-w-none"
-                              dangerouslySetInnerHTML={{
-                                __html: DOMPurify.sanitize((row as any)[col.key] ?? "", { USE_PROFILES: { html: true } }),
-                              }}
-                            />
-                          ) : (
-                            String((row as any)[col.key] ?? "")
-                          )}
-                        </TableCell>
-                      ))}
+                      {columns.map((col) => {
+                        const value = (row as any)[col.key];
+
+                        return (
+                          <TableCell key={String(col.key)}>
+                            {col.render ? (
+                              col.render(row)
+                            ) : col.html && typeof value === "string" ? (
+                              <div
+                                className="prose prose-sm max-w-none"
+                                dangerouslySetInnerHTML={{
+                                  __html: DOMPurify.sanitize(truncate(value), {
+                                    USE_PROFILES: { html: true },
+                                  }),
+                                }}
+                              />
+                            ) : typeof value === "string" ? (
+                              truncate(value)
+                            ) : (
+                              String(value ?? "")
+                            )}
+                          </TableCell>
+                        );
+                      })}
 
                       <TableCell className="text-right">
                         {rowActions ? (

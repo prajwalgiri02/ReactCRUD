@@ -112,6 +112,8 @@ export interface FieldConfig<V = any> {
   options?: FieldOption[];
   render?: (props: FieldRenderProps<V>) => ReactNode;
   html?: boolean;
+  showInTable?: boolean;   
+  showInForm?: boolean;
 }
 
 /** --- Helpers --- */

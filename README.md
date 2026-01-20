@@ -20,7 +20,9 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## 📖 Documentation
 
-For a detailed guide on how to use the CRUD system, available components, and architecture, please refer to [PROJECT_CAPABILITIES.md](./PROJECT_CAPABILITIES.md).
+This project is designed as a **Generic Admin Panel Boilerplate**.
+
+👉 **[Read the Usage Guide](./docs/how_to_use_boilerplate.md)** to learn how to add your own CRUD features.
 
 ## 🛠 Features
 
@@ -28,7 +30,6 @@ For a detailed guide on how to use the CRUD system, available components, and ar
 - **Type-Safe Resources**: Strong TypeScript integration for safe API interactions.
 - **Shadcn/UI**: Beautiful, accessible components based on Radix UI.
 - **React Hook Form**: Performant form handling with Zod validation.
-- **Bulk Actions**: Built-in support for multi-row operations.
 
 ## 📁 Project Structure
 

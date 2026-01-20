@@ -21,12 +21,7 @@ interface GenericFormPageProps<T> {
 }
 
 function normalizeValidationErrors(input: any): ValidationErrors | null {
-  // Supports:
-  // - Laravel: { message, errors: { field: ["msg"] } }
-  // - Custom: { errors: { field: "msg" } }
-  // - Custom root: { error: "..." } or { message: "..." }
-
-  const data = input?.data ?? input?.response?.data ?? input; // CrudHttpError, axios, or plain
+  const data = input?.data ?? input?.response?.data ?? input;
 
   if (data?.errors && typeof data.errors === "object") {
     const out: ValidationErrors = {};
@@ -54,6 +49,9 @@ export function GenericFormPage<T>({ resource, fields, listPath, title }: Generi
   const isEdit = Boolean(id);
   const router = useRouter();
 
+  // only fields meant for the form
+  const formFields = useMemo(() => fields.filter((f) => f.showInForm !== false), [fields]);
+
   const [values, setValues] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(isEdit);
@@ -61,7 +59,6 @@ export function GenericFormPage<T>({ resource, fields, listPath, title }: Generi
 
   const pageTitle = useMemo(() => (isEdit ? title?.edit || "Edit" : title?.create || "Create"), [isEdit, title]);
 
-  // Initialize values
   useEffect(() => {
     if (!isEdit) {
       setValues(resource.getDefaultValues?.() ?? {});
@@ -116,7 +113,6 @@ export function GenericFormPage<T>({ resource, fields, listPath, title }: Generi
     } catch (err: any) {
       const status = getStatus(err);
 
-      // Backend validation (Laravel 422)
       if (status === 422) {
         const ve = normalizeValidationErrors(err);
         if (ve) setErrors(ve);
@@ -127,7 +123,6 @@ export function GenericFormPage<T>({ resource, fields, listPath, title }: Generi
         return;
       }
 
-      // Other errors
       const ve = normalizeValidationErrors(err);
       if (ve) setErrors(ve);
       else setErrors({ _error: [err?.message ?? "Submit failed"] });
@@ -143,7 +138,6 @@ export function GenericFormPage<T>({ resource, fields, listPath, title }: Generi
   const handleFieldChange = (name: string, value: any) => {
     setValues((prev) => ({ ...prev, [name]: value }));
 
-    // Clear field error when user edits
     if (errors[name]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -180,6 +174,7 @@ export function GenericFormPage<T>({ resource, fields, listPath, title }: Generi
             onChange={(val) => handleFieldChange(field.name, val)}
             error={errorText}
             placeholder={field.placeholder}
+            disabled={(field as any).disabled}
           />
         );
 
@@ -193,6 +188,7 @@ export function GenericFormPage<T>({ resource, fields, listPath, title }: Generi
             onChange={(val) => handleFieldChange(field.name, val)}
             error={errorText}
             placeholder={field.placeholder}
+            disabled={(field as any).disabled}
           />
         );
 
@@ -206,6 +202,7 @@ export function GenericFormPage<T>({ resource, fields, listPath, title }: Generi
             onChange={(val) => handleFieldChange(field.name, val)}
             error={errorText}
             options={field.options || []}
+            disabled={(field as any).disabled}
           />
         );
 
@@ -219,6 +216,7 @@ export function GenericFormPage<T>({ resource, fields, listPath, title }: Generi
             onChange={(val) => handleFieldChange(field.name, val)}
             error={errorText}
             placeholder={field.placeholder}
+            disabled={(field as any).disabled}
           />
         );
 
@@ -239,7 +237,7 @@ export function GenericFormPage<T>({ resource, fields, listPath, title }: Generi
             <Skeleton className="h-6 w-32" />
           </CardHeader>
           <CardContent className="space-y-4">
-            {fields.map((_, idx) => (
+            {formFields.map((_, idx) => (
               <div key={idx} className="space-y-2">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-10 w-full" />
@@ -268,9 +266,7 @@ export function GenericFormPage<T>({ resource, fields, listPath, title }: Generi
       </div>
 
       {rootErrorText ? (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {String(rootErrorText)}
-        </div>
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">{String(rootErrorText)}</div>
       ) : null}
 
       <Card>
@@ -278,7 +274,7 @@ export function GenericFormPage<T>({ resource, fields, listPath, title }: Generi
           <CardTitle className="text-lg">Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {fields.map((field) => renderField(field))}
+          {formFields.map((field) => renderField(field))}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => router.push(listPath)} disabled={loading}>
