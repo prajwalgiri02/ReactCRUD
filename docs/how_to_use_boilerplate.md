@@ -1,91 +1,229 @@
-# How to Use This Boilerplate
+# CRUD Admin Boilerplate – Usage Guide
 
-This project is a generic admin panel aimed at allowing you to rapidly build CRUD interfaces.
+This boilerplate is a **generic admin panel** designed to help you build CRUD (Create, Read, Update, Delete) interfaces extremely fast, with almost no repetitive work.
 
-## Adding a New Feature
+You can build features **manually** or use the **built-in scaffold generator** (recommended).
 
-To add a new feature (e.g., "Products"), follow these steps:
+---
 
-### 1. Define the Type
+# 🚀 Quick Start (Recommended)
 
-Create a type definition for your resource in `src/features/products/types.ts` (create the directory if needed).
+Use the generator to create a complete feature in seconds.
 
-```typescript
-export type Product = {
-  id: string;
-  name: string;
+```bash
+npm run gen:feature -- products Product "title:text,slug:text,description:textarea,price:number,image:text,creationAt:date,updatedAt:date"
+```
+
+This single command creates:
+
+```
+src/features/products/
+  types.ts
+  schema.tsx
+  routes.ts
+  index.ts
+  ProductListPage.tsx
+  ProductFormPage.tsx
+
+src/app/(dashboard)/products/
+  page.tsx
+  create/page.tsx
+  [id]/edit/page.tsx
+```
+
+Your feature is now fully functional with:
+
+* list page
+* create form
+* edit form
+* API integration
+* routing
+
+---
+
+# 📦 Generated File Responsibilities
+
+## 1️⃣ `types.ts` – Backend Contract
+
+This file represents the **real backend response**. It must always match your API.
+
+```ts
+export interface Product {
+  id: number;
+  title: string;
+  slug: string;
   price: number;
-  // ... other fields
-};
-```
-
-### 2. Create the Resource Definition
-
-Create a `resource.tsx` file in `src/features/products/resource.tsx`. This is where the magic happens. You define your columns and form fields here.
-
-```typescript
-import { createCrudResource } from "@/crud/createCrudResource";
-import { Product } from "./types";
-
-export const productResource = createCrudResource<Product>({
-  queryKey: "products",
-  apiEndpoint: "/api/products", // Your API endpoint
-  columns: [
-    { accessorKey: "name", header: "Name" },
-    { accessorKey: "price", header: "Price" },
-  ],
-  form: {
-    fields: [
-      { name: "name", label: "Name", type: "text" },
-      { name: "price", label: "Price", type: "number" },
-    ],
-  },
-});
-```
-
-### 3. Create the Page
-
-Create `src/features/products/ProductListPage.tsx` which uses the generic `CrudPage`.
-
-```tsx
-"use client";
-
-import CrudPage from "@/crud/CrudPage";
-import { productResource } from "./resource";
-
-export default function ProductListPage() {
-  return <CrudPage resource={productResource} />;
+  image: string;
+  creationAt: string;
+  updatedAt: string;
 }
 ```
 
-### 4. Add the Route
+---
 
-Create `src/app/products/page.tsx`:
+## 2️⃣ `schema.tsx` – Source of Truth
+
+Controls:
+
+* form fields
+* table columns
+* render logic
+* visibility rules
+
+```ts
+export const productFields: FieldConfig[] = [
+  { name: "title", label: "Title", type: "text" },
+  { name: "description", type: "textarea", showInTable: false },
+  { name: "price", type: "number" },
+];
+```
+
+### Visibility Rules
+
+```ts
+showInTable: false // hidden from table
+showInForm: false  // hidden from form
+```
+
+---
+
+## 3️⃣ `index.ts` – Resource Definition
+
+Connects schema + types to your API.
+
+```ts
+import type { Product } from "./types";
+
+const api = createRestCrudApi<Product>("/api/products");
+export const productResource = createCrudResource(api);
+```
+
+---
+
+## 4️⃣ `ProductListPage.tsx`
+
+Generic list page (table, filters, bulk actions, pagination).
+
+No custom logic required.
+
+---
+
+## 5️⃣ `ProductFormPage.tsx`
+
+Handles both create and edit automatically.
+
+---
+
+## 6️⃣ App Router Pages
+
+Generated automatically:
+
+```
+/products
+/products/create
+/products/[id]/edit
+```
+
+No manual routing required.
+
+---
+
+# ✍️ Manual Setup (Optional)
+
+If you prefer manual setup, follow this flow:
+
+## 1. Create feature folder
+
+```
+src/features/products/
+```
+
+## 2. Create `types.ts`
+
+```ts
+export interface Product {
+  id: number;
+  name: string;
+  price: number;
+}
+```
+
+## 3. Create `index.ts`
+
+```ts
+import type { Product } from "./types";
+const api = createRestCrudApi<Product>("/api/products");
+export const productResource = createCrudResource(api);
+```
+
+## 4. Create schema
+
+```ts
+export const productFields = [
+  { name: "name", type: "text" },
+  { name: "price", type: "number" },
+];
+```
+
+## 5. Create route page
 
 ```tsx
-import ProductListPage from "@/features/products/ProductListPage";
-
+import { ProductListPage } from "@/features/products/ProductListPage";
 export default function Page() {
   return <ProductListPage />;
 }
 ```
 
-### 5. Update Sidebar
+---
 
-Add your new link to `src/components/layout/Sidebar.tsx`.
+# 🧠 How the Architecture Works
 
-```tsx
-{ to: "/products", label: "Products", icon: Package },
+```
+API → types.ts → schema.tsx → resource → pages
 ```
 
-## Generic Components
+* **types.ts** = backend truth
+* **schema.tsx** = UI truth
+* **resource** = API wiring
+* **pages** = wrappers only
 
-The core logic lies in `src/crud`.
+---
 
-- `CrudPage`: The main container.
-- `CrudTable`: The data table.
-- `createCrudResource`: Helper to define metadata.
+# 🎯 Best Practices
 
-## Styling
+* Always use the generator for new features
+* Keep backend types inside each feature
+* Treat schema as the single source of truth
+* Use visibility flags instead of custom logic
+* Never use mock data in production
 
-Components use **shadcn/ui** and **Tailwind CSS**. You can customize them in `src/components/ui`.
+---
+
+# 🔧 Advanced Generator Usage
+
+## Overwrite existing feature
+
+```bash
+npm run gen:feature -- products Product "title:text,price:number" --force
+```
+
+## Generate orders
+
+```bash
+npm run gen:feature -- orders Order "userId:number,orderNumber:text,status:text,total:number,creationAt:date"
+```
+
+---
+
+# 🧩 What You Can Extend
+
+* relations (auto select from other resources)
+* enums (status, roles)
+* file uploads
+* readonly fields
+* audit fields
+* permissions
+
+---
+
+This boilerplate is designed to scale from **small dashboards to large admin systems** with zero rewrite.
