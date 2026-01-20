@@ -9,7 +9,7 @@ import type { ValidationErrors, CrudId, CrudResource, FieldConfig } from "../typ
 import { TextInput } from "./fields/TextInput";
 import { NumberInput } from "./fields/NumberInput";
 import { SelectInput } from "./fields/SelectInput";
-import { TextareaInput } from "./fields/TextareaInput";
+import { WysiwygInput } from "./fields/TextareaInput";
 import { ZodSchema } from "zod";
 import { toast } from "sonner";
 import { ArrowLeft, Save } from "lucide-react";
@@ -188,11 +188,11 @@ export function GenericFormPage<T>({ resource, schema, fields, listPath, title }
 
       case "textarea":
         return (
-          <TextareaInput
+          <WysiwygInput
             key={field.name}
             name={field.name}
             label={field.label}
-            value={values[field.name]}
+            value={String(values[field.name] ?? "")}
             onChange={(val) => handleFieldChange(field.name, val)}
             error={errorText}
             placeholder={field.placeholder}

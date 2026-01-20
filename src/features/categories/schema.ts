@@ -12,7 +12,7 @@ export const categoryFields: FieldConfig[] = [
   {
     name: "name",
     label: "Name",
-    type: "text",
+    type: "textarea",
     placeholder: "Enter category name",
   },
   {

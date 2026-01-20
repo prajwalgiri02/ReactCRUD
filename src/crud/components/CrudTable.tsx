@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import type { ColumnConfig, ListParams, PaginationMeta, CrudId } from "../types";
 import { cn } from "@/lib/utils";
 import { Eye, Pencil, Trash2, MoreHorizontal, ChevronLeft, ChevronRight, Search, Plus } from "lucide-react";
+import DOMPurify from "dompurify";
 
 interface CrudTableProps<T = unknown> {
   columns: ColumnConfig[];
@@ -223,24 +224,14 @@ export const CrudTable = React.forwardRef(
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-sm font-medium text-foreground">{selectedCount} selected</span>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearSelection}
-                  className="h-9 rounded-xl text-muted-foreground hover:text-foreground"
-                >
+                <Button variant="ghost" size="sm" onClick={clearSelection} className="h-9 rounded-xl text-muted-foreground hover:text-foreground">
                   Clear
                 </Button>
               </div>
 
               <div className="flex items-center gap-2">
                 {onBulkDelete ? (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="h-9 rounded-xl gap-2"
-                    onClick={() => onBulkDelete(selectedIdList)}
-                  >
+                  <Button variant="destructive" size="sm" className="h-9 rounded-xl gap-2" onClick={() => onBulkDelete(selectedIdList)}>
                     <Trash2 className="h-4 w-4" />
                     Delete
                   </Button>
@@ -342,7 +333,20 @@ export const CrudTable = React.forwardRef(
                       )}
 
                       {columns.map((col) => (
-                        <TableCell key={col.key}>{col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? "")}</TableCell>
+                        <TableCell key={col.key}>
+                          {col.render ? (
+                            col.render(row)
+                          ) : col.html && typeof (row as any)[col.key] === "string" ? (
+                            <div
+                              className="prose prose-sm max-w-none"
+                              dangerouslySetInnerHTML={{
+                                __html: DOMPurify.sanitize((row as any)[col.key] ?? "", { USE_PROFILES: { html: true } }),
+                              }}
+                            />
+                          ) : (
+                            String((row as any)[col.key] ?? "")
+                          )}
+                        </TableCell>
                       ))}
 
                       <TableCell className="text-right">
@@ -485,6 +489,6 @@ export const CrudTable = React.forwardRef(
       </div>
     );
   },
-) as <T>(props: CrudTableProps<T> & React.RefAttributes<HTMLDivElement>) => React.ReactElement;
+) as (<T>(props: CrudTableProps<T> & React.RefAttributes<HTMLDivElement>) => React.ReactElement) & { displayName?: string };
 
 CrudTable.displayName = "CrudTable";

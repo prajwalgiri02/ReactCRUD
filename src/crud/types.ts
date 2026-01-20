@@ -47,6 +47,7 @@ export interface ColumnConfig {
   key: string;
   title: string;
   render?: (row: unknown) => ReactNode;
+  html?: boolean;
 }
 
 export interface ValidationErrors {
@@ -60,4 +61,5 @@ export interface FieldConfig {
   placeholder?: string;
   options?: { value: string | number; label: string }[];
   render?: (props: { value: any; onChange: (value: any) => void; error?: string }) => ReactNode;
+  html?: boolean;
 }
