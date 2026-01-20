@@ -32,7 +32,8 @@ export default function NotFound() {
         {/* Content */}
         <div className="text-center mt-12">
           <h1 className="text-4xl font-bold text-black mb-3">
-            Page Not Found <span className="text-4xl">⚠️</span>
+            Page Not Found 
+            {/* <span className="text-4xl">⚠️</span> */}
           </h1>
           
           <p className="text-lg text-gray-700 mb-8">

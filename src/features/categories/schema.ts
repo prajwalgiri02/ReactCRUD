@@ -2,23 +2,27 @@ import type { FieldConfig } from "@/crud/types";
 
 export type CategoryFormData = {
   name: string;
-  status: "active" | "inactive";
+  slug: string;
+  image: string;
 };
 
 export const categoryFields: FieldConfig[] = [
   {
     name: "name",
     label: "Name",
-    type: "textarea",
+    type: "text",
     placeholder: "Enter category name",
   },
   {
-    name: "status",
-    label: "Status",
-    type: "select",
-    options: [
-      { value: "active", label: "Active" },
-      { value: "inactive", label: "Inactive" },
-    ],
+    name: "slug",
+    label: "Slug",
+    type: "text",
+    placeholder: "clothes",
+  },
+  {
+    name: "image",
+    label: "Image URL",
+    type: "text",
+    placeholder: "https://…",
   },
 ];

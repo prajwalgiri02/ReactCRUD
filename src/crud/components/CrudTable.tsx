@@ -15,7 +15,7 @@ import { Eye, Pencil, Trash2, MoreHorizontal, ChevronLeft, ChevronRight, Search,
 import DOMPurify from "dompurify";
 
 interface CrudTableProps<T = unknown> {
-  columns: ColumnConfig[];
+  columns: ColumnConfig<T>[];
   rows: T[];
   loading: boolean;
   meta: PaginationMeta | null;
@@ -58,7 +58,7 @@ export const CrudTable = React.forwardRef(
   <T,>(
     {
       columns,
-      rows,
+      rows = [],
       loading,
       meta,
       params,
@@ -205,7 +205,7 @@ export const CrudTable = React.forwardRef(
           </TableCell>
         )}
         {columns.map((col) => (
-          <TableCell key={col.key}>
+          <TableCell key={String(col.key)}>
             <Skeleton className="h-4 w-full max-w-[200px]" />
           </TableCell>
         ))}
@@ -287,10 +287,10 @@ export const CrudTable = React.forwardRef(
                 )}
 
                 {columns.map((col) => (
-                  <TableHead key={col.key}>
+                  <TableHead key={String(col.key)}>
                     <button
                       type="button"
-                      onClick={() => handleSort(col.key)}
+                      onClick={() => handleSort(String(col.key))}
                       className="inline-flex items-center gap-2 hover:text-foreground/80 font-medium"
                       title="Sort"
                     >
@@ -333,7 +333,7 @@ export const CrudTable = React.forwardRef(
                       )}
 
                       {columns.map((col) => (
-                        <TableCell key={col.key}>
+                        <TableCell key={String(col.key)}>
                           {col.render ? (
                             col.render(row)
                           ) : col.html && typeof (row as any)[col.key] === "string" ? (

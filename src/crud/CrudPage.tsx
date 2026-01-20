@@ -10,12 +10,12 @@ import { toast } from "sonner";
 interface CrudPageProps<T> {
   title: string;
   resource: CrudResource<T>;
-  columns: ColumnConfig[];
+  columns: ColumnConfig<T>[];
   getId: (row: T) => CrudId;
 
   /** Table component (your CrudTable) */
   Table: React.ComponentType<{
-    columns: ColumnConfig[];
+    columns: ColumnConfig<T>[];
     rows: T[];
     loading: boolean;
     meta: PaginationMeta | null;
@@ -60,7 +60,7 @@ function CrudPageInner<T>(
     try {
       setLoading(true);
       const response = await resource.api.list(params);
-      setRows(response.items);
+      setRows(response.items || []);
       setMeta(response.meta ?? null);
     } catch (err) {
       console.error("Failed to fetch list:", err);
@@ -158,6 +158,8 @@ function CrudPageInner<T>(
 }
 
 // preserves generics
-export const CrudPage = React.forwardRef(CrudPageInner) as <T>(props: CrudPageProps<T> & React.RefAttributes<HTMLDivElement>) => React.ReactElement;
+export const CrudPage = React.forwardRef(CrudPageInner) as (<T>(
+  props: CrudPageProps<T> & React.RefAttributes<HTMLDivElement>,
+) => React.ReactElement) & { displayName?: string };
 
 CrudPage.displayName = "CrudPage";

@@ -107,7 +107,23 @@ export function createRestCrudApi<T>(baseUrl: string = process.env.API_BASE_URL 
         throw new CrudHttpError(String(msg), res.status, payload);
       }
 
-      return (await res.json()) as ListResponse<T>;
+      const payload = await res.json();
+
+      // 1. If payload is an array, wrap it
+      if (Array.isArray(payload)) {
+        return { items: payload, meta: null };
+      }
+
+      // 2. If payload has 'data' (common pattern) but not 'items'
+      if (Array.isArray((payload as any).data) && !(payload as any).items) {
+        return {
+          items: (payload as any).data,
+          meta: (payload as any).meta || (payload as any).pagination || null,
+        };
+      }
+
+      // 3. Otherwise assume it fits ListResponse<T>
+      return payload as ListResponse<T>;
     },
 
     async detail(id: CrudId) {
