@@ -2,7 +2,7 @@
 
 import { CrudPage } from "@/crud/CrudPage";
 import { CrudTable } from "@/crud/components/CrudTable";
-import { categoryColumns } from "./columns";
+import { categoryColumns } from "./schema";
 import { categoryResource } from "./index";
 import { categoryRoutes } from "./routes";
 import type { Category } from "@/crud/mock/mockDb";
