@@ -33,7 +33,6 @@ function extractValidationErrors(payload: any): ValidationErrors | null {
   const errors = payload?.errors;
   if (!errors || typeof errors !== "object") return null;
 
-  // ensure values are string | string[]
   const out: ValidationErrors = {};
   for (const [k, v] of Object.entries(errors)) {
     if (Array.isArray(v)) out[k] = v.map(String);
@@ -69,7 +68,6 @@ function buildQuery(params: ListParams) {
   if (params.sortBy) qs.set("sortBy", String(params.sortBy));
   if (params.descending != null) qs.set("descending", String(params.descending));
 
-  //  Filters support (flat primitives; arrays become repeated keys)
   if (params.filters && typeof params.filters === "object") {
     for (const [key, val] of Object.entries(params.filters)) {
       if (val == null) continue;
@@ -77,7 +75,6 @@ function buildQuery(params: ListParams) {
       if (Array.isArray(val)) {
         for (const item of val) qs.append(`filters[${key}][]`, String(item));
       } else if (typeof val === "object") {
-        // object filters: stringify by default (safe fallback)
         qs.set(`filters[${key}]`, JSON.stringify(val));
       } else {
         qs.set(`filters[${key}]`, String(val));
@@ -88,18 +85,56 @@ function buildQuery(params: ListParams) {
   return qs;
 }
 
+type CrudApiOptions = {
+  /**
+   * If provided, we will call this on 401 once, then retry the original request once.
+   * Example: () => fetch("/auth/refresh", { method:"POST", credentials:"include" })
+   */
+  refreshAuth?: () => Promise<Response>;
+};
+
 /**
  * REST CRUD API factory
  * Adds:
  * - detail()
  * - filters support in list()
  * - better error handling (+ validation errors via CrudValidationError)
+ * - credentials: "include" for HttpOnly cookie auth
+ * - optional 401 -> refresh -> retry
+ * - safe 204 handling
  */
-export function createRestCrudApi<T>(baseUrl: string = process.env.API_BASE_URL || "", fetcher: Fetcher = fetch): CrudApi<T> {
+export function createRestCrudApi<T>(
+  baseUrl: string = process.env.API_BASE_URL || "",
+  fetcher: Fetcher = fetch,
+  options: CrudApiOptions = {}
+): CrudApi<T> {
+  const request = async (input: RequestInfo | URL, init: RequestInit = {}, triedRefresh = false) => {
+    const mergedInit: RequestInit = {
+      ...init,
+      credentials: "include", //  send HttpOnly cookies
+      headers: {
+        Accept: "application/json",
+        ...(init.headers || {}),
+      },
+    };
+
+    const res = await fetcher(input, mergedInit);
+
+    //  optional: auto refresh once on 401 then retry once
+    if (res.status === 401 && options.refreshAuth && !triedRefresh) {
+      const refreshRes = await options.refreshAuth();
+      if (refreshRes.ok) {
+        return request(input, init, true);
+      }
+    }
+
+    return res;
+  };
+
   return {
     async list(params) {
       const qs = buildQuery(params);
-      const res = await fetcher(`${baseUrl}?${qs.toString()}`);
+      const res = await request(`${baseUrl}?${qs.toString()}`);
 
       if (!res.ok) {
         const payload = await readPayloadSafe(res);
@@ -107,14 +142,15 @@ export function createRestCrudApi<T>(baseUrl: string = process.env.API_BASE_URL 
         throw new CrudHttpError(String(msg), res.status, payload);
       }
 
+      // 204 safety (rare for list, but safe)
+      if (res.status === 204) return { items: [], meta: null };
+
       const payload = await res.json();
 
-      // 1. If payload is an array, wrap it
       if (Array.isArray(payload)) {
         return { items: payload, meta: null };
       }
 
-      // 2. If payload has 'data' (common pattern) but not 'items'
       if (Array.isArray((payload as any).data) && !(payload as any).items) {
         return {
           items: (payload as any).data,
@@ -122,12 +158,11 @@ export function createRestCrudApi<T>(baseUrl: string = process.env.API_BASE_URL 
         };
       }
 
-      // 3. Otherwise assume it fits ListResponse<T>
       return payload as ListResponse<T>;
     },
 
     async detail(id: CrudId) {
-      const res = await fetcher(`${baseUrl}/${id}`);
+      const res = await request(`${baseUrl}/${id}`);
 
       if (!res.ok) {
         const payload = await readPayloadSafe(res);
@@ -135,11 +170,13 @@ export function createRestCrudApi<T>(baseUrl: string = process.env.API_BASE_URL 
         throw new CrudHttpError(String(msg), res.status, payload);
       }
 
+      if (res.status === 204) return null as unknown as T;
+
       return (await res.json()) as T;
     },
 
     async create(data) {
-      const res = await fetcher(baseUrl, {
+      const res = await request(baseUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -156,11 +193,13 @@ export function createRestCrudApi<T>(baseUrl: string = process.env.API_BASE_URL 
         throw new CrudHttpError(String(msg), res.status, payload);
       }
 
+      if (res.status === 204) return null as unknown as T;
+
       return (await res.json()) as T;
     },
 
     async update(id: CrudId, data) {
-      const res = await fetcher(`${baseUrl}/${id}`, {
+      const res = await request(`${baseUrl}/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -177,11 +216,13 @@ export function createRestCrudApi<T>(baseUrl: string = process.env.API_BASE_URL 
         throw new CrudHttpError(String(msg), res.status, payload);
       }
 
+      if (res.status === 204) return null as unknown as T;
+
       return (await res.json()) as T;
     },
 
     async remove(id: CrudId) {
-      const res = await fetcher(`${baseUrl}/${id}`, { method: "DELETE" });
+      const res = await request(`${baseUrl}/${id}`, { method: "DELETE" });
 
       if (!res.ok) {
         const payload = await readPayloadSafe(res);

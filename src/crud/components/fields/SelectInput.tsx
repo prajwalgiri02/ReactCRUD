@@ -9,13 +9,14 @@ interface SelectInputProps {
   onChange: (value: string) => void;
   error?: string;
   options: { value: string | number; label: string }[];
+  disabled?: boolean;
 }
 
-export function SelectInput({ name, label, value, onChange, error, options }: SelectInputProps) {
+export function SelectInput({ name, label, value, onChange, error, options, disabled }: SelectInputProps) {
   return (
     <div className="space-y-2">
       <Label htmlFor={name}>{label}</Label>
-      <Select value={String(value ?? "")} onValueChange={onChange}>
+      <Select value={String(value ?? "")} onValueChange={onChange} disabled={disabled}>
         <SelectTrigger id={name} className={cn(error && "border-destructive focus:ring-destructive")}>
           <SelectValue placeholder="Select an option" />
         </SelectTrigger>

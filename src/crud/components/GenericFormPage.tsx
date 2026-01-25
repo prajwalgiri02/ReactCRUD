@@ -9,6 +9,8 @@ import type { ValidationErrors, CrudId, CrudResource, FieldConfig } from "../typ
 import { TextInput } from "./fields/TextInput";
 import { NumberInput } from "./fields/NumberInput";
 import { SelectInput } from "./fields/SelectInput";
+import { CheckboxInput } from "./fields/CheckboxInput";
+import { DateInput } from "./fields/DateInput";
 import { WysiwygInput } from "./fields/TextareaInput";
 import { toast } from "sonner";
 import { ArrowLeft, Save } from "lucide-react";
@@ -20,8 +22,16 @@ interface GenericFormPageProps<T> {
   title?: { create: string; edit: string };
 }
 
-function normalizeValidationErrors(input: any): ValidationErrors | null {
-  const data = input?.data ?? input?.response?.data ?? input;
+/**
+ * Normalizes various error shapes (Laravel, generic, CrudValidationError) into a standard field-error map.
+ */
+function normalizeValidationErrors(err: any): ValidationErrors | null {
+  // If it's our own CrudValidationError, it already has the errors extracted
+  if (err?.name === "CrudValidationError" && err.errors) {
+    return err.errors;
+  }
+
+  const data = err?.payload ?? err?.data ?? err?.response?.data ?? err;
 
   if (data?.errors && typeof data.errors === "object") {
     const out: ValidationErrors = {};
@@ -209,6 +219,33 @@ export function GenericFormPage<T>({ resource, fields, listPath, title }: Generi
       case "textarea":
         return (
           <WysiwygInput
+            key={field.name}
+            name={field.name}
+            label={field.label}
+            value={String(values[field.name] ?? "")}
+            onChange={(val) => handleFieldChange(field.name, val)}
+            error={errorText}
+            placeholder={field.placeholder}
+            disabled={(field as any).disabled}
+          />
+        );
+
+      case "checkbox":
+        return (
+          <CheckboxInput
+            key={field.name}
+            name={field.name}
+            label={field.label}
+            value={Boolean(values[field.name])}
+            onChange={(val) => handleFieldChange(field.name, val)}
+            error={errorText}
+            disabled={(field as any).disabled}
+          />
+        );
+
+      case "date":
+        return (
+          <DateInput
             key={field.name}
             name={field.name}
             label={field.label}

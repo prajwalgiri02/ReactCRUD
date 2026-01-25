@@ -9,9 +9,10 @@ interface TextInputProps {
   onChange: (value: string) => void;
   error?: string;
   placeholder?: string;
+  disabled?: boolean;
 }
 
-export function TextInput({ name, label, value, onChange, error, placeholder }: TextInputProps) {
+export function TextInput({ name, label, value, onChange, error, placeholder, disabled }: TextInputProps) {
   return (
     <div className="space-y-2">
       <Label htmlFor={name}>{label}</Label>
@@ -20,6 +21,7 @@ export function TextInput({ name, label, value, onChange, error, placeholder }: 
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        disabled={disabled}
         className={cn(error && "border-destructive focus-visible:ring-destructive")}
       />
       {error && <p className="text-sm text-destructive">{error}</p>}

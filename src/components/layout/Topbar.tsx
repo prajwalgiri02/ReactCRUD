@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell, Maximize2, Menu, SlidersHorizontal, Search as SearchIcon, Moon, Sun, User } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -198,9 +199,11 @@ export default function Topbar({ onToggleSidebar, searchValue = "", onSearchChan
           <DropdownMenuContent align="end" className="w-[200px]">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              Profile
+            <DropdownMenuItem asChild>
+              <Link href="/profile" className="flex items-center w-full cursor-pointer">
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
