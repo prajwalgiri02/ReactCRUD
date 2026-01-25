@@ -7,8 +7,8 @@ const args = process.argv.slice(2);
 const featureRaw = args[0];
 if (!featureRaw) {
   console.log(
-    'Usage: node scripts/gen-feature.mjs <featureNamePlural> [EntityNamePascal] [fields] [--force]\n' +
-      'Example: node scripts/gen-feature.mjs categories Category "name:text,slug:text,image:text,creationAt:date,updatedAt:date"'
+    "Usage: node scripts/gen-feature.mjs <featureNamePlural> [EntityNamePascal] [fields] [--force]\n" +
+      'Example: node scripts/gen-feature.mjs categories Category "name:text,slug:text,image:text,creationAt:date,updatedAt:date"',
   );
   process.exit(1);
 }
@@ -76,7 +76,7 @@ function fieldLabel(name) {
 }
 function inputType(type) {
   if (type === "id") return "text";
-  if (type === "date" || type === "datetime") return "text";
+  if (type === "date" || type === "datetime") return "date";
   if (type === "image") return "text";
   return type;
 }
@@ -119,20 +119,13 @@ function typesTs() {
 function schemaTsx() {
   const formFields = parsedFields.filter((f) => f.name !== "id");
 
-  const typeShape = formFields.length
-    ? formFields.map((f) => `  ${f.name}: string;`).join("\n")
-    : "  // add fields";
+  const typeShape = formFields.length ? formFields.map((f) => `  ${f.name}: string;`).join("\n") : "  // add fields";
 
   const fieldsArr = formFields.length
     ? formFields
         .map((f) => {
           const label = fieldLabel(f.name);
-          const placeholder =
-            f.name === "image"
-              ? "https://…"
-              : f.name === "slug"
-              ? "clothes"
-              : `Enter ${label.toLowerCase()}`;
+          const placeholder = f.name === "image" ? "https://…" : f.name === "slug" ? "clothes" : `Enter ${label.toLowerCase()}`;
           return `  {
     name: "${f.name}",
     label: "${label}",
@@ -163,12 +156,19 @@ ${fieldsArr}
 // Columns derived from fields (single source of truth)
 const base = fieldsToColumns(${fieldsVar});
 
+// Ensure ID is always in the table (at the start)
+if (!base.find(c => c.key === "id")) {
+  base.unshift({ key: "id", title: "ID" });
+}
+
 export const ${columnsVar} = base.map((c) => {
   if (c.key === "id") {
     return { ...c, render: (row: any) => <span className="font-semibold">{row.id}</span> };
   }
 
-  ${hasImage ? `if (c.key === "image") {
+  ${
+    hasImage
+      ? `if (c.key === "image") {
     return {
       ...c,
       render: (row: any) => (
@@ -179,23 +179,33 @@ export const ${columnsVar} = base.map((c) => {
         />
       ),
     };
-  }` : ""}
+  }`
+      : ""
+  }
 
-  ${hasCreationAt ? `if (c.key === "creationAt") {
+  ${
+    hasCreationAt
+      ? `if (c.key === "creationAt") {
     return {
       ...c,
       title: "Created",
       render: (row: any) => new Date(row.creationAt).toLocaleDateString(),
     };
-  }` : ""}
+  }`
+      : ""
+  }
 
-  ${hasUpdatedAt ? `if (c.key === "updatedAt") {
+  ${
+    hasUpdatedAt
+      ? `if (c.key === "updatedAt") {
     return {
       ...c,
       title: "Updated",
       render: (row: any) => new Date(row.updatedAt).toLocaleDateString(),
     };
-  }` : ""}
+  }`
+      : ""
+  }
 
   return c;
 });
@@ -310,7 +320,7 @@ async function main() {
   await ensureDir(featureDir);
 
   // Feature files
-  await writeFileSafe(path.join(featureDir, "types.ts"), typesTs()); 
+  await writeFileSafe(path.join(featureDir, "types.ts"), typesTs());
   await writeFileSafe(path.join(featureDir, "schema.tsx"), schemaTsx());
   await writeFileSafe(path.join(featureDir, "routes.ts"), routesTs());
   await writeFileSafe(path.join(featureDir, "index.ts"), indexTs());

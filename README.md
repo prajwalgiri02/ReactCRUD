@@ -1,38 +1,138 @@
-# Generic CRUD Frontend
+# 🚀 Generic CRUD Frontend Boilerplate
 
-This is a **Next.js 16** project utilizing a generic CRUD system to rapidly build admin interfaces.
+A high-performance, developer-focused **Next.js 16** boilerplate designed to build admin dashboards in record time. It features a robust generic CRUD system that handles data fetching, table rendering, pagination, and form management with minimal boilerplate.
+
+---
+
+## 🛠 Features
+
+- **⚡ Feature Generator**: Generate an entire CRUD feature (API, Types, Schema, Pages, and Routes) in seconds with a single command.
+- **🏗 Generic Architecture**: Decoupled UI logic using `CrudPage` and `GenericFormPage` components.
+- **✨ Rich Field Support**: Includes Text, Number, Select, Checkbox, Date, and Tiptap-powered WYSIWYG editors.
+- **🔗 End-to-End Type Safety**: Strong TypeScript integration from the API layer to the UI components.
+- **📦 Backend Agnostic**: Optimized for Laravel-style responses (422 errors, pagination) but flexible enough for any JSON API.
+- **🎨 Premium UI**: Styled with **Tailwind CSS 4** and **Shadcn/UI** for a sleek, modern look.
+
+---
 
 ## 🚀 Getting Started
 
-First, install the dependencies:
+### 1. Installation
 
 ```bash
 npm install
 ```
 
-Then, run the development server:
+### 2. Configure Environment
+
+Create a `.env` file in the root:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=https://api.example.com
+```
+
+### 3. Run Development Server
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Navigate to `http://localhost:3000` to see the dashboard.
 
-## 📖 Documentation
+---
 
-This project is designed as a **Generic Admin Panel Boilerplate**.
+## ⚡ Generating a New Feature
 
-👉 **[Read the Usage Guide](./docs/how_to_use_boilerplate.md)** to learn how to add your own CRUD features.
+Stop writing boilerplate. Use the automation script to create new features instantly.
 
-## 🛠 Features
+### Command Syntax
 
-- **Generic CRUD Components**: Reusable `CrudPage` and `CrudTable` for consistent UI.
-- **Type-Safe Resources**: Strong TypeScript integration for safe API interactions.
-- **Shadcn/UI**: Beautiful, accessible components based on Radix UI.
-- **React Hook Form**: Performant form handling with Zod validation.
+```bash
+npm run gen:feature <plural-name> [PascalEntityName] [fields]
+```
 
-## 📁 Project Structure
+### Example
 
-- `src/crud`: Core generic logic (Don't modify this often).
-- `src/features`: Domain specific CRUD features (e.g., Categories).
-- `src/components/ui`: Reusable UI components.
+To create a **Products** management system:
+
+```bash
+npm run gen:feature products Product "name:text,price:number,description:textarea,image:image,active:checkbox"
+```
+
+**What this generates:**
+
+1. **Feature Folder** (`src/features/products/`):
+   - `types.ts`: Interface definitions.
+   - `index.ts`: API instantiation.
+   - `schema.tsx`: Table columns and Form field definitions.
+   - `ListPage.tsx` & `FormPage.tsx`: The high-level UI components.
+2. **App Routes** (`src/app/(dashboard)/products/`):
+   - `page.tsx`: Listing page.
+   - `create/page.tsx`: Creation page.
+   - `[id]/edit/page.tsx`: Edit page.
+
+---
+
+## 🏗 Architecture & Handling
+
+### 1. The CRUD Core (`src/crud`)
+
+The engine of the boilerplate. You rarely need to touch this.
+
+- **`createRestCrudApi`**: A powerful fetcher that handles pagination, sorting, search, and validation errors.
+- **`CrudPage`**: A generic container that manages list fetching, table state, and navigation.
+- **`GenericFormPage`**: A flexible form handler that handles both Create and Edit modes automatically.
+
+### 2. Feature Definitions (`schema.tsx`)
+
+This is the "Source of Truth" for your feature. Here you define:
+
+- **Columns**: Which fields show up in the table and how they are rendered (e.g., custom image renders).
+- **Form Fields**: Labels, placeholders, and types for the input fields.
+
+### 3. API Integration
+
+The system expects standard REST operations:
+
+- `GET /resource`: Returns `{ data: [...], meta: { ... } }` or `[...]`.
+- `GET /resource/:id`: Returns the entity.
+- `POST /resource`: Creates an entity.
+- `PUT /resource/:id`: Updates the entity.
+- `DELETE /resource/:id`: Removes the entity.
+
+---
+
+## 🎨 Customizing the UI
+
+### Adding custom fields
+
+If you need a special input (e.g., a File Upload):
+
+1. Create your component in `src/crud/components/fields/`.
+2. Add it to the switch case in `src/crud/components/GenericFormPage.tsx`.
+
+### Custom Table Cells
+
+In your feature's `schema.tsx`, you can override any column's `render` function:
+
+```tsx
+export const categoryColumns = base.map((c) => {
+  if (c.key === "price") {
+    return { ...c, render: (row) => <span>${row.price.toFixed(2)}</span> };
+  }
+  return c;
+});
+```
+
+---
+
+## 📖 Useful Scripts
+
+- `npm run dev`: Start development mode.
+- `npm run build`: Build for production.
+- `npm run gen:feature`: Run the feature generator.
+- `npm run lint`: Run ESLint.
+
+---
+
+Made with ❤️ for rapid development.

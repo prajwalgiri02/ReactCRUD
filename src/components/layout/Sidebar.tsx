@@ -22,21 +22,17 @@ type Item = {
 
 const sections: Array<{ title: string; items: Item[] }> = [
   {
-    title: "Dashboard",
+    title: "Overview",
     items: [
-      { to: "/dashboard/default", label: "Default", icon: LayoutDashboard },
-      { to: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
-      { to: "/dashboard/invoice", label: "Invoice", icon: Receipt },
-      { to: "/dashboard/crm", label: "CRM", icon: Users },
-      { to: "/dashboard/blog", label: "Blog", icon: FileText },
+      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/products", label: "Products", icon: FolderTree },
     ],
   },
   {
-    title: "Widget",
+    title: "Account",
     items: [
-      { to: "/widget/statistics", label: "Statistics", icon: PieChart },
-      { to: "/widget/data", label: "Data", icon: Table2 },
-      { to: "/widget/chart", label: "Chart", icon: LineChart },
+      { to: "/profile", label: "Profile", icon: Users },
+      { to: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
     ],
   },
 ];

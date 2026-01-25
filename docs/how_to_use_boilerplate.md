@@ -1,91 +1,93 @@
 # How to Use This Boilerplate
 
-This project is a generic admin panel aimed at allowing you to rapidly build CRUD interfaces.
+This project is designed for rapid CRUD development. Use the automated tools whenever possible to save time and ensure consistency.
 
-## Adding a New Feature
+## ⚡ The Fast Way: Automated Generation
 
-To add a new feature (e.g., "Products"), follow these steps:
+The easiest way to add a new feature is to use the `gen:feature` script.
+
+```bash
+npm run gen:feature <plural-name> [PascalEntityName] [fields]
+```
+
+### Example
+
+```bash
+npm run gen:feature categories Category "name:text,slug:text,image:image"
+```
+
+This command will:
+
+1. Create all necessary files in `src/features/categories/`.
+2. Create all necessary pages in `src/app/(dashboard)/categories/`.
+3. Set up the API layer, types, and schema automatically.
+
+---
+
+## 🛠 The Manual Way: Fallback
+
+If you need a highly custom structure, you can add a feature manually by following these steps:
 
 ### 1. Define the Type
 
-Create a type definition for your resource in `src/features/products/types.ts` (create the directory if needed).
+Create `src/features/products/types.ts`:
 
 ```typescript
-export type Product = {
-  id: string;
+export interface Product {
+  id: number;
   name: string;
   price: number;
-  // ... other fields
-};
+}
 ```
 
-### 2. Create the Resource Definition
+### 2. Create the API & Resource
 
-Create a `resource.tsx` file in `src/features/products/resource.tsx`. This is where the magic happens. You define your columns and form fields here.
+Create `src/features/products/index.ts`:
 
 ```typescript
-import { createCrudResource } from "@/crud/createCrudResource";
+import { createRestCrudApi } from "@/crud/createCrudResource";
+import { createCrudResource } from "@/crud/types";
 import { Product } from "./types";
 
-export const productResource = createCrudResource<Product>({
-  queryKey: "products",
-  apiEndpoint: "/api/products", // Your API endpoint
-  columns: [
-    { accessorKey: "name", header: "Name" },
-    { accessorKey: "price", header: "Price" },
-  ],
-  form: {
-    fields: [
-      { name: "name", label: "Name", type: "text" },
-      { name: "price", label: "Price", type: "number" },
-    ],
-  },
-});
+const api = createRestCrudApi<Product>("/api/products");
+export const productResource = createCrudResource(api);
 ```
 
-### 3. Create the Page
+### 3. Define the Schema
 
-Create `src/features/products/ProductListPage.tsx` which uses the generic `CrudPage`.
+Create `src/features/products/schema.tsx`:
 
 ```tsx
-"use client";
+import { FieldConfig } from "@/crud/types";
+import { fieldsToColumns } from "@/crud/utils/fieldsToColumns";
 
-import CrudPage from "@/crud/CrudPage";
-import { productResource } from "./resource";
+export const productFields: FieldConfig[] = [
+  { name: "name", label: "Name", type: "text" },
+  { name: "price", label: "Price", type: "number" },
+];
 
-export default function ProductListPage() {
-  return <CrudPage resource={productResource} />;
-}
+export const productColumns = fieldsToColumns(productFields);
 ```
 
-### 4. Add the Route
+### 4. Create the Pages
 
-Create `src/app/products/page.tsx`:
+Use `CrudPage` for listing and `GenericFormPage` for create/edit. Refer to existing features for the boilerplate code.
 
-```tsx
-import ProductListPage from "@/features/products/ProductListPage";
+---
 
-export default function Page() {
-  return <ProductListPage />;
-}
-```
+## 🏗 Core Components
 
-### 5. Update Sidebar
+- **`CrudPage`**: The entry point for listing data. Handles search, pagination, and delete actions.
+- **`GenericFormPage`**: Handles both Create and Edit workflows.
+- **`createRestCrudApi`**: A standardized way to talk to your backend.
 
-Add your new link to `src/components/layout/Sidebar.tsx`.
+## 🎨 Field Types
 
-```tsx
-{ to: "/products", label: "Products", icon: Package },
-```
+Available field types in `FieldConfig`:
 
-## Generic Components
-
-The core logic lies in `src/crud`.
-
-- `CrudPage`: The main container.
-- `CrudTable`: The data table.
-- `createCrudResource`: Helper to define metadata.
-
-## Styling
-
-Components use **shadcn/ui** and **Tailwind CSS**. You can customize them in `src/components/ui`.
+- `text`: Standard input.
+- `number`: Numeric input.
+- `select`: Dropdown (requires `options`).
+- `textarea`: WYSIWYG editor.
+- `checkbox`: Boolean toggle.
+- `date`: Date picker.
