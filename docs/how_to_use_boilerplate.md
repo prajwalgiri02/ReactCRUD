@@ -33,11 +33,11 @@ src/app/(dashboard)/products/
 
 Your feature is now fully functional with:
 
-* list page
-* create form
-* edit form
-* API integration
-* routing
+- list page
+- create form
+- edit form
+- API integration
+- routing
 
 ---
 
@@ -65,10 +65,10 @@ export interface Product {
 
 Controls:
 
-* form fields
-* table columns
-* render logic
-* visibility rules
+- form fields
+- table columns
+- render logic
+- visibility rules
 
 ```ts
 export const productFields: FieldConfig[] = [
@@ -81,8 +81,8 @@ export const productFields: FieldConfig[] = [
 ### Visibility Rules
 
 ```ts
-showInTable: false // hidden from table
-showInForm: false  // hidden from form
+showInTable: false; // hidden from table
+showInForm: false; // hidden from form
 ```
 
 ---
@@ -182,20 +182,20 @@ export default function Page() {
 API → types.ts → schema.tsx → resource → pages
 ```
 
-* **types.ts** = backend truth
-* **schema.tsx** = UI truth
-* **resource** = API wiring
-* **pages** = wrappers only
+- **types.ts** = backend truth
+- **schema.tsx** = UI truth
+- **resource** = API wiring
+- **pages** = wrappers only
 
 ---
 
 # 🎯 Best Practices
 
-* Always use the generator for new features
-* Keep backend types inside each feature
-* Treat schema as the single source of truth
-* Use visibility flags instead of custom logic
-* Never use mock data in production
+- Always use the generator for new features
+- Keep backend types inside each feature
+- Treat schema as the single source of truth
+- Use visibility flags instead of custom logic
+- Never use mock data in production
 
 ---
 
@@ -217,12 +217,12 @@ npm run gen:feature -- orders Order "userId:number,orderNumber:text,status:text,
 
 # 🧩 What You Can Extend
 
-* relations (auto select from other resources)
-* enums (status, roles)
-* file uploads
-* readonly fields
-* audit fields
-* permissions
+- relations (auto select from other resources)
+- enums (status, roles)
+- file uploads
+- readonly fields
+- audit fields
+- permissions
 
 ---
 
